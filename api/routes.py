@@ -1,0 +1,86 @@
+from fastapi import APIRouter, HTTPException, Request
+from models.message import MessageRequest, MessageResponse
+from services.telegram_service import TelegramService
+from services.max_service import MaxService
+from config import settings
+import httpx
+
+router = APIRouter()
+
+telegram = TelegramService(settings.telegram_bot_token)
+max_service = MaxService(settings.max_bot_token)
+
+
+@router.post("/send/telegram", response_model=MessageResponse)
+async def send_telegram(req: MessageRequest):
+    try:
+        await telegram.send_bulk(req.chat_ids, req.text)
+        return MessageResponse(
+            status="success",
+            message=f"Telegram OK ({len(req.chat_ids)})"
+        )
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/send/max", response_model=MessageResponse)
+async def send_max(request: MessageRequest):
+    try:
+        # Не преобразуем к int, MAX может принимать строки
+        chat_ids = request.chat_ids
+        await max_service.send_bulk_messages(chat_ids, request.text)
+
+        return MessageResponse(
+            status="success",
+            message=f"MAX OK ({len(chat_ids)})"
+        )
+
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e.response.text))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# @router.post("/messages")
+# async def receive_max_webhook(payload: dict):
+
+#     print("MAX WEBHOOK:")
+#     print(payload)
+
+#     return {"status": "ok"}
+
+
+@router.get("/webhook/health")
+async def webhook_health():
+    return {"status": "ok"}
+
+
+
+@router.post("/webhook/max")
+async def max_webhook(request: Request):
+    data = await request.json()
+
+    print("WEBHOOK HIT")
+
+    message = data.get("message", {})
+    body = message.get("body", {})
+    sender = message.get("sender", {})
+    recipient = message.get("recipient", {})
+
+    text = body.get("text")
+    chat_id = recipient.get("chat_id")
+    user_id = sender.get("user_id")
+    name = sender.get("name")
+
+    print("TEXT:", text)
+    print("CHAT ID:", chat_id)
+    print("USER ID:", user_id)
+    print("NAME:", name)
+    print(f'{name} \n {text}')
+    if text:
+        await max_service.send_message(
+            chat_id=chat_id,
+            text=f"Ты написал: {text}"
+        )
+
+    return {"status": "ok"}
+    

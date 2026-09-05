@@ -1,0 +1,6 @@
+{
+    "github.copilot.chat.localeOverride": "ru",
+    "python.analysis.extraPaths": [
+        "./venv/Lib/site-packages"
+    ]
+}
