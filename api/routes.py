@@ -7,7 +7,10 @@ import httpx
 
 router = APIRouter()
 
-telegram = TelegramService(settings.telegram_bot_token)
+telegram = TelegramService(
+    settings.telegram_bot_token,
+    proxy=settings.telegram_proxy,
+)
 max_service = MaxService(settings.max_bot_token)
 
 
