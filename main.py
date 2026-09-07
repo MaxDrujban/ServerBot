@@ -13,6 +13,7 @@ max_service = MaxService(settings.max_bot_token)
 telegram_service = TelegramService(
     settings.telegram_bot_token,
     proxy=settings.telegram_proxy,
+    support_bridge_url=settings.support_bridge_url,
 )
 poll_stop_event = asyncio.Event()
 poll_task = None

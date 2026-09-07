@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str | None = None
     telegram_proxy: str | None = None
     telegram_mode: str = "webhook"
+    support_bridge_url: str = "http://127.0.0.1:8082"
 
     class Config:
         env_file = ".env"

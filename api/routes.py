@@ -12,8 +12,19 @@ logger = logging.getLogger(__name__)
 telegram = TelegramService(
     settings.telegram_bot_token,
     proxy=settings.telegram_proxy,
+    support_bridge_url=settings.support_bridge_url,
 )
 max_service = MaxService(settings.max_bot_token)
+
+
+async def _post_to_support_bridge(path: str, payload: dict):
+    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+        response = await client.post(
+            f"{settings.support_bridge_url}{path}",
+            json=payload,
+        )
+        response.raise_for_status()
+        return response.json()
 
 
 def _verify_telegram_secret(request: Request):
@@ -91,6 +102,42 @@ async def send_max(request: MessageRequest):
 @router.get("/webhook/health")
 async def webhook_health():
     return {"status": "ok"}
+
+
+@router.post("/integrations/support/message")
+async def support_message(request: Request):
+    payload = await request.json()
+    external_user = payload.get("external_user")
+    text = payload.get("message")
+
+    if not external_user or not text:
+        raise HTTPException(status_code=400, detail="external_user and message are required")
+
+    return await _post_to_support_bridge(
+        "/internal/support/message",
+        {
+            "external_user": external_user,
+            "message": text,
+            "source": payload.get("source", "telegram"),
+            "timestamp": payload.get("timestamp"),
+        },
+    )
+
+
+@router.post("/integrations/support/reply")
+async def support_reply(request: Request):
+    payload = await request.json()
+    external_user = payload.get("external_user")
+    text = payload.get("message")
+
+    if not external_user or not text:
+        raise HTTPException(status_code=400, detail="external_user and message are required")
+
+    await telegram.send_message(
+        chat_id=int(external_user.split(":", 1)[1]),
+        text=text,
+    )
+    return {"status": "sent"}
 
 
 @router.post("/telegram/webhook")

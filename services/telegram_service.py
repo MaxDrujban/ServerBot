@@ -1,13 +1,14 @@
 import asyncio
 from typing import Any, Dict, Optional
 
+import httpx
 from telegram import Bot
 from telegram.request import HTTPXRequest
 
 
 class TelegramService:
 
-    def __init__(self, token: str, proxy: Optional[str] = None):
+    def __init__(self, token: str, proxy: Optional[str] = None, support_bridge_url: Optional[str] = None):
         request_kwargs = {"proxy": proxy, "httpx_kwargs": {"trust_env": False}}
         self.bot = Bot(
             token=token,
@@ -16,6 +17,7 @@ class TelegramService:
         )
         self.users: Dict[int, Dict[str, Any]] = {}
         self.chat_ids = set()
+        self._support_bridge_url = support_bridge_url
 
     def remember_user(self, chat_id: int, user_id: Optional[int], username: Optional[str] = None, first_name: Optional[str] = None):
         chat_id = int(chat_id)
@@ -37,6 +39,19 @@ class TelegramService:
 
     async def get_webhook_info(self):
         return await self.bot.get_webhook_info()
+
+    async def _send_support_message(self, external_user: str, text: str):
+        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+            response = await client.post(
+                f"{self._support_bridge_url}/internal/support/message",
+                json={
+                    "external_user": external_user,
+                    "message": text,
+                    "source": "telegram",
+                },
+            )
+            response.raise_for_status()
+            return response.json()
 
     async def delete_webhook(self):
         return await self.bot.delete_webhook(drop_pending_updates=False)
@@ -171,6 +186,13 @@ class TelegramService:
 
             if text.startswith("/"):
                 return await self._handle_command(chat_id, text, user)
+
+            if self._support_bridge_url:
+                await self._send_support_message(
+                    external_user=f"telegram:{chat_id}",
+                    text=text,
+                )
+                return {"status": "forwarded_to_support"}
 
             return await self.send_message(chat_id, f"Получено сообщение: {text}")
 
