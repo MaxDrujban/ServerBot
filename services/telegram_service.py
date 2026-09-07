@@ -7,8 +7,8 @@ from telegram.request import HTTPXRequest
 
 class TelegramService:
 
-    def __init__(self, token: str):
-        request_kwargs = {"proxy": None, "httpx_kwargs": {"trust_env": False}}
+    def __init__(self, token: str, proxy: Optional[str] = None):
+        request_kwargs = {"proxy": proxy, "httpx_kwargs": {"trust_env": False}}
         self.bot = Bot(
             token=token,
             request=HTTPXRequest(**request_kwargs),

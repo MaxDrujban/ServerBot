@@ -9,7 +9,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 max_service = MaxService(settings.max_bot_token)
-telegram_service = TelegramService(settings.telegram_bot_token)
+telegram_service = TelegramService(
+    settings.telegram_bot_token,
+    proxy=settings.telegram_proxy,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
