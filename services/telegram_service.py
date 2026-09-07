@@ -38,6 +38,25 @@ class TelegramService:
     async def get_webhook_info(self):
         return await self.bot.get_webhook_info()
 
+    async def delete_webhook(self):
+        return await self.bot.delete_webhook(drop_pending_updates=False)
+
+    async def poll_updates(self, stop_event: asyncio.Event):
+        offset = None
+        while not stop_event.is_set():
+            try:
+                updates = await self.bot.get_updates(
+                    offset=offset,
+                    timeout=30,
+                    allowed_updates=["message", "callback_query"],
+                )
+                for update in updates:
+                    offset = update.update_id + 1
+                    await self.handle_update(update.to_dict())
+            except Exception:
+                if not stop_event.is_set():
+                    raise
+
     async def send_message(self, chat_id: int, text: str):
         return await self.bot.send_message(chat_id=chat_id, text=text)
 

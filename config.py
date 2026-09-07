@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     telegram_webhook_url: str | None = None
     telegram_webhook_secret: str | None = None
     telegram_proxy: str | None = None
+    telegram_mode: str = "webhook"
 
     class Config:
         env_file = ".env"
