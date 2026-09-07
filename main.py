@@ -28,7 +28,13 @@ async def lifespan(app: FastAPI):
                 settings.telegram_webhook_url,
                 secret_token=settings.telegram_webhook_secret,
             )
-            logger.info("Telegram webhook registered")
+            webhook_info = await telegram_service.get_webhook_info()
+            logger.info(
+                "Telegram webhook registered: url=%s pending=%s last_error=%s",
+                webhook_info.url,
+                webhook_info.pending_update_count,
+                webhook_info.last_error_message,
+            )
         except Exception:
             logger.exception("Could not register Telegram webhook during startup")
     yield

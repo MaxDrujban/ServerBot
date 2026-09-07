@@ -35,6 +35,9 @@ class TelegramService:
             kwargs["secret_token"] = secret_token
         return await self.bot.set_webhook(**kwargs)
 
+    async def get_webhook_info(self):
+        return await self.bot.get_webhook_info()
+
     async def send_message(self, chat_id: int, text: str):
         return await self.bot.send_message(chat_id=chat_id, text=text)
 

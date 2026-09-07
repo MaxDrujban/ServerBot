@@ -4,8 +4,10 @@ from services.telegram_service import TelegramService
 from services.max_service import MaxService
 from config import settings
 import httpx
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 telegram = TelegramService(
     settings.telegram_bot_token,
@@ -20,6 +22,15 @@ def _verify_telegram_secret(request: Request):
         return True
     provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
     return provided == expected
+
+
+async def _process_telegram_update(payload: dict):
+    try:
+        logger.info("Processing Telegram update_id=%s", payload.get("update_id"))
+        result = await telegram.handle_update(payload)
+        logger.info("Telegram update processed: update_id=%s result=%s", payload.get("update_id"), result)
+    except Exception:
+        logger.exception("Telegram update processing failed: update_id=%s", payload.get("update_id"))
 
 
 @router.get("/telegram/health")
@@ -88,7 +99,8 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=403, detail="Invalid Telegram secret token")
 
     payload = await request.json()
-    background_tasks.add_task(telegram.handle_update, payload)
+    logger.info("Telegram webhook received: update_id=%s", payload.get("update_id"))
+    background_tasks.add_task(_process_telegram_update, payload)
     return {"status": "ok"}
 
 
