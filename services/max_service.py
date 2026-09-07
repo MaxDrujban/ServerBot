@@ -2,10 +2,14 @@ import httpx
 import asyncio
 from typing import List, Union
 
+
 class MaxService:
     def __init__(self, token: str):
         self.token = token
         self.api = "https://platform-api.max.ru"
+
+    def _client(self):
+        return httpx.AsyncClient(timeout=10, trust_env=False, proxy=None)
 
     def headers(self):
         return {
@@ -17,7 +21,7 @@ class MaxService:
         """
         Регистрация webhook для MAX бота
         """
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with self._client() as client:
             r = await client.post(
                 f"{self.api}/subscriptions",
                 headers=self.headers(),
@@ -47,7 +51,7 @@ class MaxService:
             "format": format
         }
 
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with self._client() as client:
             r = await client.post(url, headers=self.headers(), json=payload)
             r.raise_for_status()
             return r.json()
@@ -56,7 +60,7 @@ class MaxService:
         """
         Отправка сообщения сразу в несколько чатов (по одному запросу на чат).
         """
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with self._client() as client:
 
             async def send(chat_id):
                 chat_id_str = str(chat_id)

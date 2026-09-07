@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     max_bot_token: str
     api_port: int = 8000
     max_webhook_url: str
+    telegram_webhook_url: str | None = None
+    telegram_webhook_secret: str | None = None
 
     class Config:
         env_file = ".env"

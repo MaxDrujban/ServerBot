@@ -11,8 +11,33 @@ telegram = TelegramService(settings.telegram_bot_token)
 max_service = MaxService(settings.max_bot_token)
 
 
+def _verify_telegram_secret(request: Request):
+    expected = settings.telegram_webhook_secret
+    if not expected:
+        return True
+    provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
+    return provided == expected
+
+
+@router.get("/telegram/health")
+async def telegram_health():
+    return {"status": "ok"}
+
+
 @router.post("/send/telegram", response_model=MessageResponse)
 async def send_telegram(req: MessageRequest):
+    try:
+        await telegram.send_bulk(req.chat_ids, req.text)
+        return MessageResponse(
+            status="success",
+            message=f"Telegram OK ({len(req.chat_ids)})"
+        )
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.post("/telegram/send", response_model=MessageResponse)
+async def send_telegram_message(req: MessageRequest):
     try:
         await telegram.send_bulk(req.chat_ids, req.text)
         return MessageResponse(
@@ -53,6 +78,35 @@ async def send_max(request: MessageRequest):
 async def webhook_health():
     return {"status": "ok"}
 
+
+@router.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    if not _verify_telegram_secret(request):
+        raise HTTPException(status_code=403, detail="Invalid Telegram secret token")
+
+    payload = await request.json()
+    await telegram.handle_update(payload)
+    return {"status": "ok"}
+
+
+@router.post("/telegram/alert")
+async def telegram_alert(request: Request):
+    payload = await request.json()
+    chat_id = payload.get("chat_id") or payload.get("chatId")
+    title = payload.get("title") or "Alert"
+    details = payload.get("details") or payload.get("message") or "No details"
+    severity = payload.get("severity") or "info"
+
+    if not chat_id:
+        raise HTTPException(status_code=400, detail="chat_id is required")
+
+    result = await telegram.send_alert(
+        chat_id=str(chat_id),
+        title=title,
+        details=details,
+        severity=severity,
+    )
+    return {"status": "ok", "result": result}
 
 
 @router.post("/webhook/max")
