@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from models.message import MessageRequest, MessageResponse
 from services.telegram_service import TelegramService
 from services.max_service import MaxService
@@ -80,12 +80,12 @@ async def webhook_health():
 
 
 @router.post("/telegram/webhook")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     if not _verify_telegram_secret(request):
         raise HTTPException(status_code=403, detail="Invalid Telegram secret token")
 
     payload = await request.json()
-    await telegram.handle_update(payload)
+    background_tasks.add_task(telegram.handle_update, payload)
     return {"status": "ok"}
 
 
