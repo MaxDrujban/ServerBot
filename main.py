@@ -20,6 +20,9 @@ poll_task = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global poll_task
+    poll_stop_event.clear()
+
     try:
         await max_service.set_webhook(settings.max_webhook_url)
         logger.info("MAX webhook registered")
@@ -27,8 +30,10 @@ async def lifespan(app: FastAPI):
         logger.exception("Could not register MAX webhook during startup")
 
     if settings.telegram_mode.lower() == "polling":
-        global poll_task
-        await telegram_service.delete_webhook()
+        try:
+            await telegram_service.delete_webhook()
+        except Exception:
+            logger.exception("Could not remove Telegram webhook before polling")
         logger.info("Telegram webhook removed; polling enabled")
         poll_task = asyncio.create_task(telegram_service.poll_updates(poll_stop_event))
     elif settings.telegram_webhook_url:
@@ -47,7 +52,7 @@ async def lifespan(app: FastAPI):
         except Exception:
             logger.exception("Could not register Telegram webhook during startup")
     yield
-    if poll_task:
+    if poll_task and not poll_task.done():
         poll_stop_event.set()
         await poll_task
     logger.info("Application shutting down")
