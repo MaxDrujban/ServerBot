@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 max_service = MaxService(settings.max_bot_token)
