@@ -43,12 +43,13 @@ class TelegramService:
     async def get_webhook_info(self):
         return await self.bot.get_webhook_info()
 
-    async def _send_support_message(self, external_user: str, text: str):
+    async def _send_support_message(self, external_user: str, text: str, display_name: Optional[str] = None):
         async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
             response = await client.post(
                 f"{self._support_bridge_url}/internal/support/message",
                 json={
                     "external_user": external_user,
+                    "display_name": display_name,
                     "message": text,
                     "source": "telegram",
                 },
@@ -196,9 +197,14 @@ class TelegramService:
                 return await self._handle_command(chat_id, text, user)
 
             if self._support_bridge_url:
+                first = user.get("first_name") or ""
+                last = user.get("last_name") or ""
+                username = user.get("username") or ""
+                display_name = (first + " " + last).strip() or username or f"telegram:{chat_id}"
                 await self._send_support_message(
                     external_user=f"telegram:{chat_id}",
                     text=text,
+                    display_name=display_name,
                 )
                 return {"status": "forwarded_to_support"}
 
