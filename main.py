@@ -3,6 +3,7 @@ from api.routes import router
 from config import settings
 from services.max_service import MaxService
 from services.telegram_service import TelegramService
+from services.ai_service import AiService
 from contextlib import asynccontextmanager
 import asyncio
 import logging
@@ -10,11 +11,23 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ai_service = (
+    AiService(
+        api_key=settings.ai_api_key,
+        base_url=settings.ai_base_url,
+        model=settings.ai_model,
+        system_prompt=settings.ai_system_prompt,
+    )
+    if settings.ai_enabled and settings.ai_api_key
+    else None
+)
+
 max_service = MaxService(settings.max_bot_token)
 telegram_service = TelegramService(
     settings.telegram_bot_token,
     proxy=settings.telegram_proxy,
     support_bridge_url=settings.support_bridge_url,
+    ai_service=ai_service,
 )
 poll_stop_event = asyncio.Event()
 poll_task = None

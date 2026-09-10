@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     telegram_proxy: str | None = None
     telegram_mode: str = "webhook"
     support_bridge_url: str = "http://127.0.0.1:8082"
+    ai_enabled: bool = False
+    ai_api_key: str | None = None
+    ai_base_url: str = "https://api.deepseek.com"
+    ai_model: str = "deepseek-chat"
+    ai_system_prompt: str = (
+        "Ты — ассистент технической поддержки. "
+        "Отвечай кратко и по делу на русском языке."
+    )
 
     class Config:
         env_file = ".env"
