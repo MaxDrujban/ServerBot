@@ -133,10 +133,20 @@ async def support_reply(request: Request):
     if not external_user or not text:
         raise HTTPException(status_code=400, detail="external_user and message are required")
 
-    await telegram.send_message(
-        chat_id=int(external_user.split(":", 1)[1]),
-        text=text,
-    )
+    try:
+        chat_id = int(str(external_user).split(":", 1)[1])
+    except (IndexError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Некорректный external_user '{external_user}': ожидается формат '<канал>:<chat_id>'",
+        )
+
+    try:
+        await telegram.send_message(chat_id=chat_id, text=text)
+    except Exception as err:
+        logger.exception("Ответ в Telegram не отправлен (external_user=%s)", external_user)
+        raise HTTPException(status_code=502, detail=f"Telegram: {err}") from err
+
     return {"status": "sent"}
 
 

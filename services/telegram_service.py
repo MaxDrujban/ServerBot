@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from telegram import Bot
+from telegram.error import NetworkError, RetryAfter, TimedOut
 from telegram.request import HTTPXRequest
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,25 @@ class TelegramService:
         logger.info("Telegram polling loop stopped")
 
     async def send_message(self, chat_id: int, text: str):
-        return await self.bot.send_message(chat_id=chat_id, text=text)
+        return await self._send_with_retry(chat_id, text)
+
+    async def _send_with_retry(self, chat_id: int, text: str, attempts: int = 3, base_delay: float = 0.5):
+        """Отправка с повторами: сеть и лимиты Telegram часто сбоят временно."""
+        for attempt in range(1, attempts + 1):
+            try:
+                return await self.bot.send_message(chat_id=chat_id, text=text)
+            except RetryAfter as err:
+                if attempt == attempts:
+                    raise
+                delay = float(err.retry_after) + 0.5
+                logger.warning("Telegram просит подождать %.1f с (попытка %s)", delay, attempt)
+            except (TimedOut, NetworkError) as err:
+                if attempt == attempts:
+                    raise
+                delay = base_delay * attempt
+                logger.warning("Отправка в Telegram не удалась (%s), попытка %s", type(err).__name__, attempt)
+
+            await asyncio.sleep(delay)
 
     async def answer_callback_query(self, callback_query_id: str, text: str):
         return await self.bot.answer_callback_query(callback_query_id=callback_query_id, text=text)
@@ -110,10 +129,16 @@ class TelegramService:
         return await self.send_message(chat_id, text)
 
     async def send_bulk(self, chat_ids, text):
-        await asyncio.gather(
-            *[self.bot.send_message(chat_id=c, text=text) for c in chat_ids],
+        results = await asyncio.gather(
+            *[self._send_with_retry(c, text) for c in chat_ids],
             return_exceptions=True
         )
+
+        for chat_id, result in zip(chat_ids, results):
+            if isinstance(result, Exception):
+                logger.error("Сообщение в чат %s не отправлено: %s", chat_id, result)
+
+        return results
 
     async def _handle_command(self, chat_id: int, text: str, user: Dict[str, Any]):
         cleaned = text.strip().lower()
