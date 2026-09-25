@@ -86,9 +86,17 @@ curl http://127.0.0.1:8010/telegram/health
 
 ```bash
 cd /opt/serverbot
+./update.sh            # git pull + сборка образа + пересоздание контейнера + проверка API
+./update.sh --clean    # то же, но с полной пересборкой без кеша
+```
+
+Первое обновление, пока скрипта на сервере ещё нет:
+
+```bash
+cd /opt/serverbot
 git pull origin main
-docker compose build --no-cache
+docker compose build
 docker compose up -d --force-recreate
 ```
 
-> После изменения кода обязательно выполняйте `docker compose build`, иначе образ останется старым.
+> После изменения кода обязательно выполняйте сборку (`./update.sh`), иначе образ останется старым.
