@@ -10,10 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api ./api
-COPY clients ./clients
 COPY models ./models
 COPY services ./services
-COPY config.py main.py models.py ./
+COPY config.py main.py ./
 
 EXPOSE 8010
 

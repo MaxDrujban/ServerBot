@@ -36,7 +36,6 @@ api/routes.py            REST API и webhook-маршруты
 services/telegram_service.py  логика Telegram
 services/max_service.py       клиент MAX
 services/ai_service.py        DeepSeek AI ассистент
-clients/httpt_client.py       HTTP-клиент
 models/message.py             Pydantic-модели
 Dockerfile, docker-compose.yml
 ```

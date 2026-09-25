@@ -61,18 +61,6 @@ async def send_telegram(req: MessageRequest):
         raise HTTPException(500, str(e))
 
 
-@router.post("/telegram/send", response_model=MessageResponse)
-async def send_telegram_message(req: MessageRequest):
-    try:
-        await telegram.send_bulk(req.chat_ids, req.text)
-        return MessageResponse(
-            status="success",
-            message=f"Telegram OK ({len(req.chat_ids)})"
-        )
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
-
 @router.post("/send/max", response_model=MessageResponse)
 async def send_max(request: MessageRequest):
     try:
