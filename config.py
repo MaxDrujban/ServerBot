@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     max_bot_token: str
     api_port: int = 8000
     max_webhook_url: str
+    max_webhook_secret: str | None = None
+    max_api_url: str = "https://platform-api2.max.ru"
+    max_verify_ssl: bool = True
     telegram_webhook_url: str | None = None
     telegram_webhook_secret: str | None = None
     telegram_proxy: str | None = None

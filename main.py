@@ -1,34 +1,19 @@
-from fastapi import FastAPI
-from api.routes import router
-from config import settings
-from services.max_service import MaxService
-from services.telegram_service import TelegramService
-from services.ai_service import AiService
 from contextlib import asynccontextmanager
 import asyncio
 import logging
 
+from fastapi import FastAPI
+
+from api.routes import router
+from config import settings
+from services.instances import max_service, telegram_service
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ai_service = (
-    AiService(
-        api_key=settings.ai_api_key,
-        base_url=settings.ai_base_url,
-        model=settings.ai_model,
-        system_prompt=settings.ai_system_prompt,
-    )
-    if settings.ai_enabled and settings.ai_api_key
-    else None
-)
+# Какие события MAX нам нужны: новые сообщения и старт диалога с ботом
+MAX_UPDATE_TYPES = ["message_created", "bot_started"]
 
-max_service = MaxService(settings.max_bot_token)
-telegram_service = TelegramService(
-    settings.telegram_bot_token,
-    proxy=settings.telegram_proxy,
-    support_bridge_url=settings.support_bridge_url,
-    ai_service=ai_service,
-)
 poll_stop_event = asyncio.Event()
 poll_task = None
 
@@ -38,8 +23,12 @@ async def lifespan(app: FastAPI):
     poll_stop_event.clear()
 
     try:
-        await max_service.set_webhook(settings.max_webhook_url)
-        logger.info("MAX webhook registered")
+        await max_service.set_webhook(
+            settings.max_webhook_url,
+            secret=settings.max_webhook_secret,
+            update_types=MAX_UPDATE_TYPES,
+        )
+        logger.info("MAX webhook registered: %s", settings.max_webhook_url)
     except Exception:
         logger.exception("Could not register MAX webhook during startup")
 

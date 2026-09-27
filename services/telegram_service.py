@@ -2,7 +2,6 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-import httpx
 from telegram import Bot
 from telegram.error import NetworkError, RetryAfter, TimedOut
 from telegram.request import HTTPXRequest
@@ -16,8 +15,7 @@ class TelegramService:
         self,
         token: str,
         proxy: Optional[str] = None,
-        support_bridge_url: Optional[str] = None,
-        ai_service: Optional[Any] = None,
+        support: Optional[Any] = None,
     ):
         request_kwargs = {"proxy": proxy, "httpx_kwargs": {"trust_env": False}}
         self.bot = Bot(
@@ -27,9 +25,8 @@ class TelegramService:
         )
         self.users: Dict[int, Dict[str, Any]] = {}
         self.chat_ids = set()
-        self._support_bridge_url = support_bridge_url
-        self.ai_service = ai_service
-        self.conversations: Dict[int, list] = {}
+        # SupportService: пересылка обращений в чат поддержки и автоответы ИИ
+        self.support = support
 
     def remember_user(self, chat_id: int, user_id: Optional[int], username: Optional[str] = None, first_name: Optional[str] = None):
         chat_id = int(chat_id)
@@ -51,20 +48,6 @@ class TelegramService:
 
     async def get_webhook_info(self):
         return await self.bot.get_webhook_info()
-
-    async def _send_support_message(self, external_user: str, text: str, display_name: Optional[str] = None, source: str = "telegram"):
-        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-            response = await client.post(
-                f"{self._support_bridge_url}/internal/support/message",
-                json={
-                    "external_user": external_user,
-                    "display_name": display_name,
-                    "message": text,
-                    "source": source,
-                },
-            )
-            response.raise_for_status()
-            return response.json()
 
     async def delete_webhook(self):
         return await self.bot.delete_webhook(drop_pending_updates=False)
@@ -229,37 +212,25 @@ class TelegramService:
             if text.startswith("/"):
                 return await self._handle_command(chat_id, text, user)
 
-            if self._support_bridge_url:
+            if self.support and self.support.enabled:
                 first = user.get("first_name") or ""
                 last = user.get("last_name") or ""
                 username = user.get("username") or ""
                 display_name = (first + " " + last).strip() or username or f"telegram:{chat_id}"
 
                 external_user = f"telegram:{chat_id}"
-                await self._send_support_message(
-                    external_user=external_user,
-                    text=text,
-                    display_name=display_name,
-                    source="telegram",
-                )
+                await self.support.forward_message(external_user, text, display_name, "telegram")
 
                 # Автоответ ИИ-ассистента
-                if self.ai_service:
-                    try:
-                        history = self.conversations.setdefault(chat_id, [])
-                        history.append({"role": "user", "content": text})
-                        reply = await self.ai_service.chat(history[-20:])
-                        history.append({"role": "assistant", "content": reply})
+                try:
+                    reply = await self.support.ai_reply(external_user, text)
+                except Exception:
+                    logger.exception("AI reply failed")
+                    reply = None
 
-                        await self.send_message(chat_id, reply)
-                        await self._send_support_message(
-                            external_user=external_user,
-                            text=reply,
-                            display_name="ИИ-ассистент",
-                            source="ai",
-                        )
-                    except Exception:
-                        logger.exception("AI reply failed")
+                if reply:
+                    await self.send_message(chat_id, reply)
+                    await self.support.forward_message(external_user, reply, "ИИ-ассистент", "ai")
 
                 return {"status": "forwarded_to_support"}
 

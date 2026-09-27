@@ -47,6 +47,9 @@ TELEGRAM_BOT_TOKEN=...
 MAX_BOT_TOKEN=...
 API_PORT=8010
 MAX_WEBHOOK_URL=https://example.com/webhook/max
+MAX_WEBHOOK_SECRET=...            # секрет подписки: приходит в заголовке X-Max-Bot-Api-Secret
+MAX_API_URL=https://platform-api2.max.ru
+MAX_VERIFY_SSL=true               # false только если сертификат Минцифры не установлен в образ
 TELEGRAM_WEBHOOK_URL=https://example.com/telegram/webhook
 TELEGRAM_WEBHOOK_SECRET=...
 TELEGRAM_MODE=polling
@@ -63,6 +66,29 @@ AI_SYSTEM_PROMPT=...
 
 - `TELEGRAM_MODE=polling` — сервер сам опрашивает Telegram через `getUpdates`.
 - `TELEGRAM_MODE=webhook` — Telegram отправляет update на публичный HTTPS-адрес.
+
+## Настройка MAX
+
+MAX не использует опрос: события приходят вебхуком на `POST /webhook/max`.
+
+1. Подписка создаётся при старте приложения — `POST /subscriptions` с адресом из `MAX_WEBHOOK_URL`,
+   списком событий `message_created` и `bot_started`, и секретом из `MAX_WEBHOOK_SECRET`.
+2. Требования MAX к адресу: HTTPS строго на порту 443 (в URL порт не указывается), сертификат
+   доверенного центра или Минцифры, полная цепочка сертификатов. Если адрес не отвечает `200`
+   в течение 30 секунд, MAX повторяет доставку, а через 8 часов отписывает бота.
+3. Секрет приходит в заголовке `X-Max-Bot-Api-Secret`. Если `MAX_WEBHOOK_SECRET` задан,
+   запросы с чужой подписью отклоняются с кодом 403.
+4. Запросы к API идут на `platform-api2.max.ru`. Если в образе нет сертификата Минцифры,
+   проверка TLS не пройдёт — добавьте сертификат в образ или временно выставьте `MAX_VERIFY_SSL=false`.
+
+Адресация собеседников в чате поддержки:
+
+```text
+max:user:<id>   личный диалог -> POST /messages?user_id=<id>
+max:chat:<id>   чат или канал -> POST /messages?chat_id=<id>
+```
+
+Из сообщений MAX обрабатывается только текст: вложения в чат поддержки не переносятся.
 
 Не включайте polling и webhook одновременно для одного бота.
 
