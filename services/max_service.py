@@ -80,6 +80,7 @@ class MaxService:
         # ca_bundle — путь к файлу с сертификатами; он важнее флага verify_ssl,
         # потому что позволяет не отключать проверку TLS целиком
         self.verify = ca_bundle or verify_ssl
+        logger.info("MAX API: %s, проверка TLS: %s", self.api, self.verify)
 
     def _client(self) -> httpx.AsyncClient:
         # trust_env=False: прокси окружения настроен для Telegram и здесь не нужен

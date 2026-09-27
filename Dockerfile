@@ -15,6 +15,15 @@ RUN update-ca-certificates
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# httpx берёт сертификаты не из системного хранилища, а из файла certifi,
+# поэтому для MAX собираем общий набор: публичные УЦ + УЦ Минцифры
+RUN CERTIFI_PATH="$(python -c 'import certifi; print(certifi.where())')" \
+    && cat "$CERTIFI_PATH" \
+           /usr/local/share/ca-certificates/russian_trusted_root_ca.crt \
+           /usr/local/share/ca-certificates/russian_trusted_sub_ca.crt \
+       > /etc/ssl/certs/max_ca_bundle.pem
+ENV MAX_CA_BUNDLE=/etc/ssl/certs/max_ca_bundle.pem
+
 COPY api ./api
 COPY models ./models
 COPY services ./services
