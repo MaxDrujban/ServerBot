@@ -68,14 +68,22 @@ def extract_incoming_message(update: Dict[str, Any]) -> Optional[Dict[str, Any]]
 class MaxService:
     """Отправка сообщений и подписка на события MAX."""
 
-    def __init__(self, token: str, api_url: str = DEFAULT_API_URL, verify_ssl: bool = True):
+    def __init__(
+        self,
+        token: str,
+        api_url: str = DEFAULT_API_URL,
+        verify_ssl: bool = True,
+        ca_bundle: Optional[str] = None,
+    ):
         self.token = token
         self.api = api_url.rstrip("/")
-        self.verify_ssl = verify_ssl
+        # ca_bundle — путь к файлу с сертификатами; он важнее флага verify_ssl,
+        # потому что позволяет не отключать проверку TLS целиком
+        self.verify = ca_bundle or verify_ssl
 
     def _client(self) -> httpx.AsyncClient:
         # trust_env=False: прокси окружения настроен для Telegram и здесь не нужен
-        return httpx.AsyncClient(timeout=10, trust_env=False, proxy=None, verify=self.verify_ssl)
+        return httpx.AsyncClient(timeout=10, trust_env=False, proxy=None, verify=self.verify)
 
     def _headers(self) -> Dict[str, str]:
         return {"Authorization": self.token, "Content-Type": "application/json"}

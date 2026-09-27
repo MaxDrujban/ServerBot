@@ -34,4 +34,5 @@ max_service = MaxService(
     settings.max_bot_token,
     api_url=settings.max_api_url,
     verify_ssl=settings.max_verify_ssl,
+    ca_bundle=settings.max_ca_bundle,
 )
