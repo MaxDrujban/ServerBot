@@ -122,13 +122,21 @@ cd /opt/serverbot
 ./update.sh --clean    # то же, но с полной пересборкой без кеша
 ```
 
-Первое обновление, пока скрипта на сервере ещё нет:
+`update.sh` делает `git pull --ff-only` без аргументов — то есть тянет из upstream текущей ветки клона. Значит, клон на сервере должен смотреть на Redmine, ветку `MaxWork`.
+
+Первоначальная настройка серверного клона (один раз, пока ветка не переключена):
 
 ```bash
 cd /opt/serverbot
-git pull origin main
+git remote add redmine https://m.shelkunov@redmine.kozhevnikovspb.ru/developments_all/mainsystem-suite/server-bot/server_bot.git
+git fetch redmine
+git switch -c MaxWork --track redmine/MaxWork   # если ветка MaxWork уже есть: git switch MaxWork
+git branch --set-upstream-to=redmine/MaxWork
+git pull --ff-only
 docker compose build
 docker compose up -d --force-recreate
 ```
+
+После этого `./update.sh` подтягивает свежий код обычным `git push` из рабочих папок разработчика. Ветка `main` при этом остаётся зеркалом GitHub.
 
 > После изменения кода обязательно выполняйте сборку (`./update.sh`), иначе образ останется старым.
