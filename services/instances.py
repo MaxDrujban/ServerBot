@@ -18,7 +18,7 @@ ai_service = (
         model=settings.ai_model,
         system_prompt=settings.ai_system_prompt,
     )
-    if settings.ai_enabled and settings.ai_api_key
+    if settings.ai_enabled
     else None
 )
 
