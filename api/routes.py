@@ -38,7 +38,7 @@ def _verify_secret(request: Request, expected: str | None, header: str):
 async def _process_telegram_update(payload: dict):
     try:
         logger.info("Processing Telegram update_id=%s", payload.get("update_id"))
-        result = await telegram.handle_update(payload)
+        result = await telegram_service.handle_update(payload)
         logger.info("Telegram update processed: update_id=%s result=%s", payload.get("update_id"), result)
     except Exception:
         logger.exception("Telegram update processing failed: update_id=%s", payload.get("update_id"))
