@@ -13,16 +13,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-async def _post_to_support_bridge(path: str, payload: dict):
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-        response = await client.post(
-            f"{settings.support_bridge_url}{path}",
-            json=payload,
-        )
-        response.raise_for_status()
-        return response.json()
-
-
 def _verify_secret(request: Request, expected: str | None, header: str):
     """Проверка подписи вебхука по заголовку.
 
@@ -78,38 +68,10 @@ async def send_max(request: MessageRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# @router.post("/messages")
-# async def receive_max_webhook(payload: dict):
-
-#     print("MAX WEBHOOK:")
-#     print(payload)
-
-#     return {"status": "ok"}
-
 
 @router.get("/webhook/health")
 async def webhook_health():
     return {"status": "ok"}
-
-
-@router.post("/integrations/support/message")
-async def support_message(request: Request):
-    payload = await request.json()
-    external_user = payload.get("external_user")
-    text = payload.get("message")
-
-    if not external_user or not text:
-        raise HTTPException(status_code=400, detail="external_user and message are required")
-
-    return await _post_to_support_bridge(
-        "/internal/support/message",
-        {
-            "external_user": external_user,
-            "message": text,
-            "source": payload.get("source", "telegram"),
-            "timestamp": payload.get("timestamp"),
-        },
-    )
 
 
 @router.post("/integrations/support/reply")
