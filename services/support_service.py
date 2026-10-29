@@ -5,12 +5,9 @@
 * автоответ ИИ-ассистента с историей переписки по каждому собеседнику.
 """
 
-import logging
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
-
-logger = logging.getLogger(__name__)
 
 
 def parse_external_user(external_user: str) -> Tuple[str, Dict[str, int]]:
