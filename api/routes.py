@@ -13,7 +13,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _verify_secret(request: Request, expected: str | None, header: str):
+def _verify_secret(request: Request, expected: str | None, header: str) -> bool:
     """Проверка подписи вебхука по заголовку.
 
     Если секрет не задан в настройках, проверка считается пройденной.
@@ -21,7 +21,6 @@ def _verify_secret(request: Request, expected: str | None, header: str):
     """
     if not expected:
         return True
-
     return request.headers.get(header) == expected
 
 
@@ -67,11 +66,6 @@ async def send_max(request: MessageRequest):
         raise HTTPException(status_code=e.response.status_code, detail=str(e.response.text))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/webhook/health")
-async def webhook_health():
-    return {"status": "ok"}
 
 
 @router.post("/integrations/support/reply")
