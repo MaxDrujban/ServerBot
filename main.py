@@ -2,15 +2,20 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 
-from logging_config import configure_logging
-
-configure_logging()
-
 from fastapi import FastAPI
 
 from api.routes import router
 from config import settings
 from services.instances import max_service, telegram_service
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+# httpx пишет полный URL запроса, а в URL Telegram лежит токен бота:
+# на INFO это утечка секрета в логи, поэтому оставляем только предупреждения
+for _noisy in ("httpx", "httpcore"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
