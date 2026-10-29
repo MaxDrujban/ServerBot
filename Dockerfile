@@ -27,7 +27,7 @@ ENV MAX_CA_BUNDLE=/etc/ssl/certs/max_ca_bundle.pem
 COPY api ./api
 COPY models ./models
 COPY services ./services
-COPY config.py main.py ./
+COPY config.py main.py logging_config.py ./
 
 EXPOSE 8010
 

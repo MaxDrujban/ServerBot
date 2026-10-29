@@ -2,13 +2,16 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 
+from logging_config import configure_logging
+
+configure_logging()
+
 from fastapi import FastAPI
 
 from api.routes import router
 from config import settings
 from services.instances import max_service, telegram_service
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Какие события MAX нам нужны: новые сообщения и старт диалога с ботом
