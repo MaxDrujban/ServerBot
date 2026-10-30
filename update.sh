@@ -64,7 +64,7 @@ docker compose ps
 echo "== 6/6 Проверяю готовность API =="
 ready=0
 for _ in $(seq 1 15); do
-    if curl -fsS -m 3 http://127.0.0.1:8010/telegram/health >/dev/null 2>&1; then
+    if curl -fsS -m 3 http://127.0.0.1:8010/health >/dev/null 2>&1; then
         ready=1
         break
     fi

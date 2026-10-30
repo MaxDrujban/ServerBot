@@ -26,15 +26,14 @@ def _verify_secret(request: Request, expected: str | None, header: str) -> bool:
 
 async def _process_telegram_update(payload: dict):
     try:
-        logger.info("Processing Telegram update_id=%s", payload.get("update_id"))
-        result = await telegram_service.handle_update(payload)
-        logger.info("Telegram update processed: update_id=%s result=%s", payload.get("update_id"), result)
+        await telegram_service.handle_update(payload)
     except Exception:
         logger.exception("Telegram update processing failed: update_id=%s", payload.get("update_id"))
 
 
-@router.get("/telegram/health")
-async def telegram_health():
+@router.get("/health")
+@router.get("/telegram/health", include_in_schema=False)
+async def health():
     return {"status": "ok"}
 
 
@@ -100,7 +99,6 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=403, detail="Invalid Telegram secret token")
 
     payload = await request.json()
-    logger.info("Telegram webhook received: update_id=%s", payload.get("update_id"))
     background_tasks.add_task(_process_telegram_update, payload)
     return {"status": "ok"}
 
@@ -135,7 +133,6 @@ async def _process_max_update(update: dict):
         return
 
     external_user = incoming["external_user"]
-    logger.info("MAX message from %s: %s", external_user, incoming["text"])
 
     await support_service.forward_message(external_user, incoming["text"], incoming["display_name"], "max")
 
@@ -153,7 +150,9 @@ async def _process_max_update(update: dict):
 async def _process_max_payload(payload: dict):
     """MAX присылает объект Update; принимаем и обёртку {"updates": [...]}."""
     updates = payload.get("updates") if isinstance(payload, dict) else None
-    updates = updates if isinstance(updates, list) else [payload]
+
+    if not isinstance(updates, list):
+        updates = [payload]
 
     for update in updates:
         if isinstance(update, dict):
@@ -166,7 +165,6 @@ async def max_webhook(request: Request, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=403, detail="Invalid MAX secret token")
 
     payload = await request.json()
-    logger.info("MAX webhook received: update_type=%s", payload.get("update_type"))
     background_tasks.add_task(_process_max_payload, payload)
     return {"status": "ok"}
     

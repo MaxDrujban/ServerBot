@@ -54,7 +54,6 @@ class TelegramService:
 
     async def poll_updates(self, stop_event: asyncio.Event):
         offset = None
-        logger.info("Telegram polling loop started")
         while not stop_event.is_set():
             try:
                 updates = await self.bot.get_updates(
@@ -62,8 +61,6 @@ class TelegramService:
                     timeout=30,
                     allowed_updates=["message", "callback_query"],
                 )
-                if updates:
-                    logger.info("Telegram polling received %s update(s)", len(updates))
                 for update in updates:
                     await self.handle_update(update.to_dict())
                     offset = update.update_id + 1
@@ -71,7 +68,6 @@ class TelegramService:
                 if not stop_event.is_set():
                     logger.exception("Telegram polling iteration failed; retrying")
                     await asyncio.sleep(5)
-        logger.info("Telegram polling loop stopped")
 
     async def send_message(self, chat_id: int, text: str):
         return await self._send_with_retry(chat_id, text)

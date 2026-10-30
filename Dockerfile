@@ -31,4 +31,4 @@ COPY config.py main.py ./
 
 EXPOSE 8010
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${API_PORT:-8010}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${API_PORT:-8010} --no-access-log"]

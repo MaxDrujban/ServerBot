@@ -110,9 +110,11 @@ docker compose logs -f serverbot
 Проверка:
 
 ```bash
-curl http://127.0.0.1:8010/telegram/health
+curl http://127.0.0.1:8010/health
 # {"status":"ok"}
 ```
+
+Старый адрес `/telegram/health` оставлен как совместимый алиас.
 
 ## Обновление на сервере
 

@@ -8,7 +8,7 @@ services:
     ports:
       - "8010:8010"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/telegram/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
