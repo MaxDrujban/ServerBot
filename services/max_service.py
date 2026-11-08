@@ -21,7 +21,7 @@ RETRYABLE_STATUSES = {429, 500, 503}
 
 
 def display_name(user: Dict[str, Any]) -> str:
-    """Имя собеседника для чата поддержки. Поле name в API устарело, не используем его."""
+    """Имя собеседника для чата поддержки."""
     first = user.get("first_name") or ""
     last = user.get("last_name") or ""
     username = user.get("username") or ""
@@ -31,18 +31,17 @@ def display_name(user: Dict[str, Any]) -> str:
 
 def extract_incoming_message(update: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Достаёт из события MAX данные обращения.
-
-    Возвращает None, если событие не является текстовым сообщением.
+       Возвращает None, если событие не является текстовым сообщением.
     """
-    message = update.get("message") or {}
-    sender = message.get("sender") or {}
-    recipient = message.get("recipient") or {}
-    body = message.get("body") or {}
+    message = update.get("message") or {}         # само сообщение внутри события
+    sender = message.get("sender") or {}          # кто написал: user_id, имя, username
+    recipient = message.get("recipient") or {}    # куда пришло: chat_id и тип чата
+    body = message.get("body") or {}              # содержимое: текст и вложения
 
-    text = body.get("text")
-    user_id = sender.get("user_id")
-    chat_id = recipient.get("chat_id")
-    chat_type = str(recipient.get("chat_type") or "dialog").lower()
+    text = body.get("text")                                    # текст сообщения
+    user_id = sender.get("user_id")                            # id автора в MAX
+    chat_id = recipient.get("chat_id")                         # id чата или канала
+    chat_type = str(recipient.get("chat_type") or "dialog").lower()  # "dialog", "chat" или "channel"
 
     if not text or not user_id:
         return None
@@ -77,13 +76,16 @@ class MaxService:
     ):
         self.token = token
         self.api = api_url.rstrip("/")
-        # ca_bundle — путь к файлу с сертификатами; он важнее флага verify_ssl,
-        # потому что позволяет не отключать проверку TLS целиком
-        self.verify = ca_bundle or verify_ssl
+        self.ca_bundle = ca_bundle
+        self.verify_ssl = verify_ssl
 
     def _client(self) -> httpx.AsyncClient:
+        # Свой файл сертификатов важнее флага: с ним проверка TLS остаётся включённой
+        verify: bool | str = self.verify_ssl
+        if self.ca_bundle:
+            verify = self.ca_bundle
         # trust_env=False: прокси окружения настроен для Telegram и здесь не нужен
-        return httpx.AsyncClient(timeout=10, trust_env=False, proxy=None, verify=self.verify)
+        return httpx.AsyncClient(timeout=10, trust_env=False, proxy=None, verify=verify)
 
     def _headers(self) -> Dict[str, str]:
         return {"Authorization": self.token, "Content-Type": "application/json"}

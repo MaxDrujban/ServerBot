@@ -14,8 +14,8 @@ logging.basicConfig(
 )
 # httpx пишет полный URL запроса, а в URL Telegram лежит токен бота:
 # на INFO это утечка секрета в логи, поэтому оставляем только предупреждения
-for _noisy in ("httpx", "httpcore"):
-    logging.getLogger(_noisy).setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
