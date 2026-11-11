@@ -28,7 +28,7 @@ def display_name(user: Dict[str, Any]) -> str:
 
     return f"{first} {last}".strip() or username or f"MAX {user.get('user_id')}"
 
-
+# Разбирает входящее сообщение из вэбхук
 def extract_incoming_message(update: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Достаёт из события MAX данные обращения.
        Возвращает None, если событие не является текстовым сообщением.
@@ -139,32 +139,31 @@ class MaxService:
         attempts: int = 3,
         base_delay: float = 0.5,
     ) -> Dict[str, Any]:
-        """Отправка с повторами: сеть и лимит запросов сбоят временно."""
+        """Отправка с повторами при временных сбоях сети и лимита запросов."""
         for attempt in range(1, attempts + 1):
             try:
                 return await self.send_message(text=text, user_id=user_id, chat_id=chat_id)
-            except httpx.HTTPStatusError as err:
-                if attempt == attempts or err.response.status_code not in RETRYABLE_STATUSES:
-                    raise
-                delay = base_delay * attempt
-                logger.warning(
-                    "MAX ответил %s, повтор через %.1f с (попытка %s)",
-                    err.response.status_code,
-                    delay,
-                    attempt,
-                )
-            except httpx.TransportError as err:
-                if attempt == attempts:
-                    raise
-                delay = base_delay * attempt
-                logger.warning(
-                    "Отправка в MAX не удалась (%s), повтор через %.1f с (попытка %s)",
-                    type(err).__name__,
-                    delay,
-                    attempt,
-                )
+            except (httpx.HTTPStatusError, httpx.TransportError) as err:
+                if isinstance(err, httpx.HTTPStatusError):
+                    status = err.response.status_code
+                    reason = f"ответ {status}"
+                    retryable = status in RETRYABLE_STATUSES
+                else:
+                    reason = f"сбой сети ({type(err).__name__})"
+                    retryable = True
 
-            await asyncio.sleep(delay)
+                if attempt == attempts or not retryable:
+                    raise
+
+                delay = base_delay * attempt
+                logger.warning(
+                    "MAX: %s, повтор через %.1f с (попытка %s из %s)",
+                    reason,
+                    delay,
+                    attempt,
+                    attempts,
+                )
+                await asyncio.sleep(delay)
 
     async def send_bulk_messages(self, chat_ids: List[Union[int, str]], text: str) -> List[Any]:
         """Отправка одного текста в несколько чатов — для ручки /send/max."""
