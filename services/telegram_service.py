@@ -59,7 +59,7 @@ class TelegramService:
                 updates = await self.bot.get_updates(
                     offset=offset,
                     timeout=30,
-                    allowed_updates=["message", "callback_query"],
+                    allowed_updates=["message"],
                 )
                 for update in updates:
                     await self.handle_update(update.to_dict())
@@ -89,35 +89,6 @@ class TelegramService:
                 logger.warning("Отправка в Telegram не удалась (%s), попытка %s", type(err).__name__, attempt)
 
             await asyncio.sleep(delay)
-
-    async def answer_callback_query(self, callback_query_id: str, text: str):
-        return await self.bot.answer_callback_query(callback_query_id=callback_query_id, text=text)
-
-    async def send_alert(self, chat_id: int, title: str, details: str, severity: str = "info"):
-        emoji = {
-            "info": "ℹ️",
-            "warning": "⚠️",
-            "critical": "🚨",
-            "ok": "✅",
-        }.get(severity.lower(), "ℹ️")
-
-        text = (
-            f"{emoji} {title}\n\n"
-            f"{details}"
-        )
-        return await self.send_message(chat_id, text)
-
-    async def send_bulk(self, chat_ids, text):
-        results = await asyncio.gather(
-            *[self._send_with_retry(c, text) for c in chat_ids],
-            return_exceptions=True
-        )
-
-        for chat_id, result in zip(chat_ids, results):
-            if isinstance(result, Exception):
-                logger.error("Сообщение в чат %s не отправлено: %s", chat_id, result)
-
-        return results
 
     async def _handle_command(self, chat_id: int, text: str, user: Dict[str, Any]):
         cleaned = text.strip().lower()
@@ -152,37 +123,6 @@ class TelegramService:
             return await self.send_message(chat_id, "pong")
 
         return await self.send_message(chat_id, "Неизвестная команда. Используйте /help")
-
-    async def _handle_callback(self, callback_query: Dict[str, Any]):
-        callback_id = callback_query.get("id")
-        data = callback_query.get("data") or ""
-        message = callback_query.get("message", {})
-        chat = message.get("chat", {})
-        chat_id = chat.get("id")
-        user = callback_query.get("from", {})
-
-        self.remember_user(
-            chat_id=chat_id,
-            user_id=user.get("id"),
-            username=user.get("username"),
-            first_name=user.get("first_name"),
-        )
-
-        if not data:
-            await self.bot.answer_callback_query(callback_query_id=callback_id, text="Нет данных")
-            return {"status": "ignored"}
-
-        if data.startswith("alert_ack:"):
-            await self.answer_callback_query(callback_query_id=callback_id, text="Подтверждено")
-            return {"status": "acknowledged", "data": data}
-
-        if data.startswith("action:"):
-            action = data.split(":", 1)[1]
-            await self.answer_callback_query(callback_query_id=callback_id, text=f"Действие: {action}")
-            return {"status": "action", "data": action}
-
-        await self.answer_callback_query(callback_query_id=callback_id, text="Неизвестный callback")
-        return {"status": "unknown_callback", "data": data}
 
     async def handle_update(self, update_payload: Dict[str, Any]):
         if not update_payload:
@@ -231,8 +171,5 @@ class TelegramService:
                 return {"status": "forwarded_to_support"}
 
             return await self.send_message(chat_id, f"Получено сообщение: {text}")
-
-        if "callback_query" in update_payload:
-            return await self._handle_callback(update_payload["callback_query"])
 
         return {"status": "ignored"}

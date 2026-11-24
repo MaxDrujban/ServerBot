@@ -1,13 +1,11 @@
+import logging
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from config import settings
-from models.message import MessageRequest, MessageResponse
 from services.instances import max_service, support_service, telegram_service
 from services.max_service import extract_incoming_message
 from services.support_service import parse_external_user
-
-import httpx
-import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,36 +33,6 @@ async def _process_telegram_update(payload: dict):
 @router.get("/telegram/health", include_in_schema=False)
 async def health():
     return {"status": "ok"}
-
-
-@router.post("/send/telegram", response_model=MessageResponse)
-async def send_telegram(req: MessageRequest):
-    try:
-        await telegram_service.send_bulk(req.chat_ids, req.text)
-        return MessageResponse(
-            status="success",
-            message=f"Telegram OK ({len(req.chat_ids)})"
-        )
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
-
-@router.post("/send/max", response_model=MessageResponse)
-async def send_max(request: MessageRequest):
-    try:
-        # Не преобразуем к int, MAX может принимать строки
-        chat_ids = request.chat_ids
-        await max_service.send_bulk_messages(chat_ids, request.text)
-
-        return MessageResponse(
-            status="success",
-            message=f"MAX OK ({len(chat_ids)})"
-        )
-
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e.response.text))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/integrations/support/reply")
@@ -101,26 +69,6 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     payload = await request.json()
     background_tasks.add_task(_process_telegram_update, payload)
     return {"status": "ok"}
-
-
-@router.post("/telegram/alert")
-async def telegram_alert(request: Request):
-    payload = await request.json()
-    chat_id = payload.get("chat_id") or payload.get("chatId")
-    title = payload.get("title") or "Alert"
-    details = payload.get("details") or payload.get("message") or "No details"
-    severity = payload.get("severity") or "info"
-
-    if not chat_id:
-        raise HTTPException(status_code=400, detail="chat_id is required")
-
-    result = await telegram_service.send_alert(
-        chat_id=str(chat_id),
-        title=title,
-        details=details,
-        severity=severity,
-    )
-    return {"status": "ok", "result": result}
 
 
 async def _process_max_update(update: dict):

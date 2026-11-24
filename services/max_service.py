@@ -164,16 +164,3 @@ class MaxService:
                     attempts,
                 )
                 await asyncio.sleep(delay)
-
-    async def send_bulk_messages(self, chat_ids: List[Union[int, str]], text: str) -> List[Any]:
-        """Отправка одного текста в несколько чатов — для ручки /send/max."""
-        results = await asyncio.gather(
-            *[self.send_with_retry(text=text, chat_id=chat_id) for chat_id in chat_ids],
-            return_exceptions=True,
-        )
-
-        for chat_id, result in zip(chat_ids, results):
-            if isinstance(result, Exception):
-                logger.error("Сообщение в чат MAX %s не отправлено: %s", chat_id, result)
-
-        return results
